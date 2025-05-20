@@ -23,7 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class FolderSerializer(serializers.ModelSerializer):
     owned_by = serializers.PrimaryKeyRelatedField(
-        read_only=True, default=serializers.CurrentUserDefault()
+        read_only=True,
     )
 
     class Meta:
