@@ -1,7 +1,9 @@
 from django.db import models
 from django.core.validators import FileExtensionValidator
 from pypdf import PdfReader
-from ..User.models import User
+
+# from ..User.models import User
+from User.models import User
 
 
 # Create your models here.

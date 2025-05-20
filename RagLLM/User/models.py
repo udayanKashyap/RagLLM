@@ -1,3 +1,4 @@
+import json
 from enum import unique
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
@@ -54,7 +55,6 @@ class Chat(models.Model):
                         "type": "integer",
                         "minimum": 0,
                     },
-                    "uniqueItems": true,
                 },
             },
             "required": ["role", "content"],
@@ -63,7 +63,23 @@ class Chat(models.Model):
     folder = models.ForeignKey(
         Folder, on_delete=models.CASCADE, related_name="chats", unique=False
     )
-    messages = models.JSONField(schema=SCHEMA)
     summary = models.CharField(max_length=500, unique=False, blank=False)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
+    messages = models.JSONField()  # Remove schema parameter
+
+    def clean(self):
+        super().clean()
+        self.validate_messages_schema()
+
+    def validate_messages_schema(self):
+        from jsonschema import validate, ValidationError
+
+        try:
+            validate(instance=self.messages, schema=self.SCHEMA)
+        except ValidationError as e:
+            raise ValidationError(f"Messages don't match schema: {e.message}")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # Runs clean() and validators
+        super().save(*args, **kwargs)
