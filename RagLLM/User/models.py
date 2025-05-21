@@ -63,10 +63,10 @@ class Chat(models.Model):
     folder = models.ForeignKey(
         Folder, on_delete=models.CASCADE, related_name="chats", unique=False
     )
-    summary = models.CharField(max_length=500, unique=False, blank=False)
+    summary = models.CharField(max_length=500, unique=False, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
-    messages = models.JSONField()  # Remove schema parameter
+    messages = models.JSONField(blank=True, default=list)  # Remove schema parameter
 
     def clean(self):
         super().clean()

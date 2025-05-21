@@ -9,7 +9,7 @@ from User.models import User
 # Create your models here.
 class Document(models.Model):
     owned_by = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="documents", unique=False
+        User, on_delete=models.CASCADE, related_name="documents"
     )
     file = models.FileField(
         upload_to="pdfs/",
@@ -17,21 +17,51 @@ class Document(models.Model):
         blank=True,
         validators=[FileExtensionValidator(allowed_extensions=["pdf"])],
     )
-    extracted_text = models.TextField(null=True, blank=True)
+    content = models.TextField(null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        if self.file and not self.extracted_text:
+        if self.file and not self.content:
             self.extractTextFromPdf()
-        super().save(self, *args, **kwargs)
+        super().save(*args, **kwargs)
 
     def extractTextFromPdf(self):
         text = ""
         try:
             with self.file.open("rb") as f:
                 pdf = PdfReader(f)
-                for page in pdf.page:
+                for page in pdf.pages:
                     text += page.extract_text()
         except Exception as e:
             text = ""
-        return text
+        self.content = text
+
+
+# class Document(models.Model):
+#     owned_by = models.ForeignKey(
+#         User, on_delete=models.CASCADE, related_name="documents", unique=False
+#     )
+#     file = models.FileField(
+#         upload_to="pdfs/",
+#         null=True,
+#         blank=True,
+#         validators=[FileExtensionValidator(allowed_extensions=["pdf"])],
+#     )
+#     extracted_text = models.TextField(null=True, blank=True)
+#     uploaded_at = models.DateTimeField(auto_now_add=True)
+#
+#     def save(self, *args, **kwargs):
+#         if self.file and not self.extracted_text:
+#             self.extractTextFromPdf()
+#         super().save(self, *args, **kwargs)
+#
+#     def extractTextFromPdf(self):
+#         text = ""
+#         try:
+#             with self.file.open("rb") as f:
+#                 pdf = PdfReader(f)
+#                 for page in pdf.page:
+#                     text += page.extract_text()
+#         except Exception as e:
+#             text = ""
+#         return text

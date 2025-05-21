@@ -10,4 +10,11 @@ urlpatterns = [
     path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("folders/", CreateFolderView.as_view(), name="create_folder"),
     path("folders/<int:id>/", ModifyFolderView.as_view(), name="update_folder"),
+    path("chats/", CreateChatView.as_view(), name="create_chat"),
+    path("chats/<int:id>/", ModifyChatView.as_view(), name="update_chat"),
+    path(
+        "chats/<int:chatId>/messages/",
+        UploadMessageView.as_view(),
+        name="upload_message",
+    ),
 ]

@@ -2,7 +2,7 @@ import email
 from rest_framework import serializers
 from .models import User, Folder, Chat
 import jsonschema
-from jsonschema import validate
+from jsonschema import ValidationError, validate
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -34,7 +34,7 @@ class FolderSerializer(serializers.ModelSerializer):
 
 class ChatSerializer(serializers.ModelSerializer):
     folder = serializers.PrimaryKeyRelatedField(
-        queryset=Folder.objects.all(), write_only=True
+        queryset=Folder.objects.all(),
     )
 
     class Meta:
@@ -55,4 +55,17 @@ class ChatSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         if value.owned_by != user:
             raise serializers.ValidationError("You don't own this folder")
+        return value
+
+
+class MessageSerializer(serializers.Serializer):
+    role = serializers.CharField()
+    content = serializers.CharField()
+    documents = serializers.ListField(
+        child=serializers.IntegerField(min_value=0), required=False, default=[]
+    )
+
+    def validate_role(self, value):
+        if value not in ["user", "system"]:
+            raise serializers.ValidationError("Invalid Role")
         return value
