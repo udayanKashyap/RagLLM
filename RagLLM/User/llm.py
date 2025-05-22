@@ -12,7 +12,7 @@ qdrant_client = QdrantClient(
 collectionName = "document_collection"
 
 
-class Document:
+class VectorDocument:
     def __init__(self, name, content, summary=""):
         self.name = name
         self.content = content

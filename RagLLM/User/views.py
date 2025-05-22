@@ -1,4 +1,4 @@
-from django.http import Http404, Http401
+from django.http import Http404
 from rest_framework.views import APIView, Response
 from django.shortcuts import render
 from rest_framework import status, permissions
@@ -82,7 +82,7 @@ class ModifyChatView(APIView):
         try:
             chat = Chat.objects.select_related("folder").get(pk=id)
             if chat.folder.owned_by != self.request.user:
-                raise Http401
+                raise Http404
             return chat
         except Chat.DoesNotExist:
             raise Http404
@@ -115,7 +115,7 @@ class UploadMessageView(APIView):
         try:
             chat = Chat.objects.select_related("folder").get(pk=chatId)
             if chat.folder.owned_by != self.request.user:
-                raise Http401
+                raise Http404
             return chat
         except Chat.DoesNotExist:
             raise Http404
