@@ -9,11 +9,10 @@ from django.core.validators import FileExtensionValidator
 
 class DocumentSerializer(serializers.ModelSerializer):
     document = serializers.FileField(
-        write_only=True,
         required=False,
         validators=[FileExtensionValidator(allowed_extensions=["pdf"])],
     )
-    content = serializers.CharField(write_only=True, required=False)
+    content = serializers.CharField(required=False)
 
     class Meta:
         model = Document

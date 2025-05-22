@@ -1,3 +1,4 @@
+from os import name
 from django.shortcuts import render
 from rest_framework.views import APIView, status
 from rest_framework.response import Response
@@ -17,7 +18,13 @@ class CreateDocumentView(APIView):
         if serializer.is_valid():
             serializer.save()
 
-            print(serializer.data)
+            vectorDB = VectorDocument(
+                id=serializer.instance.id,
+                name=serializer.instance.file,
+                content=serializer.instance.content,
+            )
+            vectorDB.createEmbedding()
+            vectorDB.storeEmbedding()
 
             return Response(
                 {
