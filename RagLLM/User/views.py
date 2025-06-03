@@ -1,17 +1,83 @@
+from pprint import pprint
+import json
+from django.http import StreamingHttpResponse
+from http import client
+import os
+from PIL.Image import new
 from django.http import Http404
 from rest_framework.views import APIView, Response
 from django.shortcuts import render
-from rest_framework import status, permissions
+from rest_framework import serializers, status, permissions
 from .serializers import (
     ChatSerializer,
     FolderSerializer,
     MessageSerializer,
     UserSerializer,
 )
-from .models import Folder, User
+from .models import Folder, User, Chat
+
+from RagLLM import geminiClient
+from google import genai
 
 
 # Create your views here.
+class UploadMessageView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_chat(self, chatId):
+        try:
+            chat = Chat.objects.select_related("folder").get(pk=chatId)
+            if chat.folder.owned_by != self.request.user:
+                raise Http404
+            return chat
+        except Chat.DoesNotExist:
+            raise Http404
+
+    def post(self, request, chatId):
+        chat = self.get_chat(chatId)
+        serializer = MessageSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+
+        new_message = serializer.validated_data
+        messages = chat.messages or []
+        messages.append(new_message)
+        chat.messages = messages
+        chat.save()
+        pprint(messages)
+
+        # Build the entire conversation history to pass to gemini
+        conversation = []
+        for msg in messages:
+            # Convert to Gemini's role format (user/model)
+            role = "user" if msg["role"] == "user" else "model"
+            conversation.append({"role": role, "parts": [msg["content"]]})
+
+        def gemini_stream_generator():
+            response = geminiClient.models.generate_content_stream(
+                model=os.getenv("GEMINI_MODEL"),
+                contents=[new_message["content"]],
+            )
+            full_response = []
+            for chunk in response:
+                if chunk.text:
+                    # Stream token to client
+                    data = json.dumps({"token": chunk.text})
+                    yield f"data: {data}\n\n"
+                    full_response.append(chunk.text)
+
+            # Save complete assistant response to chat
+            assistant_message = {"role": "model", "content": "".join(full_response)}
+            messages.append(assistant_message)
+            chat.messages = messages
+            chat.save()
+            yield "event: end\ndata: stream_complete\n\n"
+
+        return StreamingHttpResponse(
+            gemini_stream_generator(), content_type="text/event-stream"
+        )
+
+
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -32,6 +98,11 @@ class RegisterView(APIView):
 
 class CreateFolderView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        folders = Folder.objects.filter(owned_by=request.user)
+        serializer = FolderSerializer(folders, many=True)
+        return Response(serializer.data, status=200)
 
     def post(self, request):
         serializer = FolderSerializer(data=request.data)
@@ -67,6 +138,11 @@ class ModifyFolderView(APIView):
 class CreateChatView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request, folderId):
+        chats = Chat.objects.filter(folder=folderId)
+        serializer = ChatSerializer(chats, many=True)
+        return Response(serializer.data, status=200)
+
     def post(self, request):
         serializer = ChatSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
@@ -79,6 +155,7 @@ class ModifyChatView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self, id):
+        print(id)
         try:
             chat = Chat.objects.select_related("folder").get(pk=id)
             if chat.folder.owned_by != self.request.user:
@@ -108,29 +185,29 @@ class ModifyChatView(APIView):
         return Response({"message": "chat deleted successfully"}, status=200)
 
 
-class UploadMessageView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_chat(self, chatId):
-        try:
-            chat = Chat.objects.select_related("folder").get(pk=chatId)
-            if chat.folder.owned_by != self.request.user:
-                raise Http404
-            return chat
-        except Chat.DoesNotExist:
-            raise Http404
-
-    def post(self, request, chatId):
-        chat = self.get_chat(chatId)
-        serializer = MessageSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=400)
-
-        newMessage = MessageSerializer.validated_data
-        messages = chat.messages or []
-        messages.append(newMessage)
-
-        chat.messages = messages
-        chat.save()
-
-        return Response(ChatSerializer(chat).data, status=200)
+# class UploadMessageView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]
+#
+#     def get_chat(self, chatId):
+#         try:
+#             chat = Chat.objects.select_related("folder").get(pk=chatId)
+#             if chat.folder.owned_by != self.request.user:
+#                 raise Http404
+#             return chat
+#         except Chat.DoesNotExist:
+#             raise Http404
+#
+#     def post(self, request, chatId):
+#         chat = self.get_chat(chatId)
+#         serializer = MessageSerializer(data=request.data)
+#         if not serializer.is_valid():
+#             return Response(serializer.errors, status=400)
+#
+#         newMessage = MessageSerializer.validated_data
+#         messages = chat.messages or []
+#         messages.append(newMessage)
+#
+#         chat.messages = messages
+#         chat.save()
+#
+#         return Response(ChatSerializer(chat).data, status=200)

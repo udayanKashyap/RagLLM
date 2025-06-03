@@ -41,25 +41,25 @@ class Folder(models.Model):
 
 
 class Chat(models.Model):
-    SCHEMA = {
-        "title": "Chat Message Schema",
-        "type": "array",
-        "items": {
-            "type": "object",
-            "properties": {
-                "role": {"type": "string"},
-                "content": {"type": "string", "minLength": 1},
-                "documents": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer",
-                        "minimum": 0,
-                    },
-                },
-            },
-            "required": ["role", "content"],
-        },
-    }
+    # SCHEMA = {
+    #     "title": "Chat Message Schema",
+    #     "type": "array",
+    #     "items": {
+    #         "type": "object",
+    #         "properties": {
+    #             "role": {"type": "string"},
+    #             "content": {"type": "string", "minLength": 1},
+    #             "documents": {
+    #                 "type": "array",
+    #                 "items": {
+    #                     "type": "integer",
+    #                     "minimum": 0,
+    #                 },
+    #             },
+    #         },
+    #         "required": ["role", "content"],
+    #     },
+    # }
     folder = models.ForeignKey(
         Folder, on_delete=models.CASCADE, related_name="chats", unique=False
     )
@@ -68,18 +68,18 @@ class Chat(models.Model):
     modified_at = models.DateTimeField(auto_now=True)
     messages = models.JSONField(blank=True, default=list)  # Remove schema parameter
 
-    def clean(self):
-        super().clean()
-        self.validate_messages_schema()
-
-    def validate_messages_schema(self):
-        from jsonschema import validate, ValidationError
-
-        try:
-            validate(instance=self.messages, schema=self.SCHEMA)
-        except ValidationError as e:
-            raise ValidationError(f"Messages don't match schema: {e.message}")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()  # Runs clean() and validators
-        super().save(*args, **kwargs)
+    # def clean(self):
+    #     super().clean()
+    #     # self.validate_messages_schema()
+    #
+    # def validate_messages_schema(self):
+    #     from jsonschema import validate, ValidationError
+    #
+    #     try:
+    #         validate(instance=self.messages, schema=self.SCHEMA)
+    #     except ValidationError as e:
+    #         raise ValidationError(f"Messages don't match schema: {e.message}")
+    #
+    # def save(self, *args, **kwargs):
+    #     self.full_clean()  # Runs clean() and validators
+    #     super().save(*args, **kwargs)

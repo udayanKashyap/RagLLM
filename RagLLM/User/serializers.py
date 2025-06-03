@@ -65,7 +65,7 @@ class MessageSerializer(serializers.Serializer):
         child=serializers.IntegerField(min_value=0), required=False, default=[]
     )
 
-    def validate_role(self, value):
-        if value not in ["user", "system"]:
-            raise serializers.ValidationError("Invalid Role")
-        return value
+
+# def validate_role(self, value):
+#     if value not in ["user", "system", "model"]:
+#         raise serializers.ValidationError("Invalid Role")
