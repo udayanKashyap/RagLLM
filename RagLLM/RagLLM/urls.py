@@ -17,8 +17,15 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from django.http import HttpResponse
+
+
+def hello_world(request):
+    return HttpResponse("Hello World")
+
 
 urlpatterns = [
+    path("", hello_world),  # root path
     path("admin/", admin.site.urls),
     path("user/", include("User.urls")),
     path("documents/", include("vectorDB.urls")),
