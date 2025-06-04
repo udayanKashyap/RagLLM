@@ -53,13 +53,13 @@ class UploadMessageView(APIView):
         for msg in messages:
             # Convert to Gemini's role format (user/model)
             role = "user" if msg["role"] == "user" else "model"
-            conversation.append({"role": role, "parts": [msg["content"]]})
+            conversation.append({"role": role, "parts": [{"text": msg["content"]}]})
         pprint(conversation)
 
         def gemini_stream_generator():
             response = geminiClient.models.generate_content_stream(
                 model=os.getenv("GEMINI_MODEL"),
-                contents=[new_message["content"]],
+                contents=conversation,
             )
             full_response = []
             for chunk in response:
