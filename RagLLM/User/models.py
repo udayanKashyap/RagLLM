@@ -2,6 +2,7 @@ import json
 from enum import unique
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from google.auth import default
 
 
 # Create your models here.
@@ -63,7 +64,7 @@ class Chat(models.Model):
     folder = models.ForeignKey(
         Folder, on_delete=models.CASCADE, related_name="chats", unique=False
     )
-    summary = models.CharField(max_length=500, unique=False, blank=True)
+    summary = models.CharField(max_length=500, unique=False, default="Untitled space")
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
     messages = models.JSONField(blank=True, default=list)  # Remove schema parameter

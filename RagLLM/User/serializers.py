@@ -68,6 +68,13 @@ class MessageSerializer(serializers.Serializer):
     document_constraint = serializers.BooleanField(required=False, default=False)
 
 
+class ChatListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Chat
+        fields = ["id", "folder", "summary", "created_at", "modified_at"]
+        read_only_fields = ["created_at", "modified_at"]
+
+
 # def validate_role(self, value):
 #     if value not in ["user", "system", "model"]:
 #         raise serializers.ValidationError("Invalid Role")

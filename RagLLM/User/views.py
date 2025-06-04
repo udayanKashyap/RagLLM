@@ -13,6 +13,7 @@ from .serializers import (
     FolderSerializer,
     MessageSerializer,
     UserSerializer,
+    ChatListSerializer,
 )
 from .models import Folder, User, Chat
 
@@ -142,11 +143,23 @@ class ModifyFolderView(APIView):
 class CreateChatView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    # Get all chats of a folder
     def get(self, request, folderId):
-        chats = Chat.objects.filter(folder=folderId)
-        serializer = ChatSerializer(chats, many=True)
-        return Response(serializer.data, status=200)
+        # Validate folder ownership
+        try:
+            folder = Folder.objects.get(id=folderId, owned_by=request.user)
+        except Folder.DoesNotExist:
+            return Response(
+                {"detail": "Folder not found or access denied"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
+        # Get chats and serialize without messages
+        chats = Chat.objects.filter(folder=folder)
+        serializer = ChatListSerializer(chats, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # Create a chat
     def post(self, request):
         serializer = ChatSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
@@ -168,6 +181,7 @@ class ModifyChatView(APIView):
         except Chat.DoesNotExist:
             raise Http404
 
+    # Get specific chat
     def get(self, request, id):
         chat = self.get_object(id)
         serializer = ChatSerializer(chat)
@@ -183,6 +197,7 @@ class ModifyChatView(APIView):
             return Response(serializer.data, status=200)
         return Response(serializer.errors, status=400)
 
+    # delete specific chat
     def delete(self, request, id):
         chat = self.get_object(id)
         chat.delete()
