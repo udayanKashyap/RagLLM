@@ -1,4 +1,5 @@
 import email
+from google.auth import default
 from rest_framework import serializers
 from .models import User, Folder, Chat
 import jsonschema
@@ -64,6 +65,7 @@ class MessageSerializer(serializers.Serializer):
     documents = serializers.ListField(
         child=serializers.IntegerField(min_value=0), required=False, default=[]
     )
+    document_constraint = serializers.BooleanField(required=False, default=False)
 
 
 # def validate_role(self, value):

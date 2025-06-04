@@ -39,12 +39,14 @@ class UploadMessageView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
 
-        new_message = serializer.validated_data
+        new_message = {
+            "role": serializer.validated_data["role"],
+            "content": serializer.validated_data["content"],
+        }
         messages = chat.messages or []
         messages.append(new_message)
         chat.messages = messages
         chat.save()
-        pprint(messages)
 
         # Build the entire conversation history to pass to gemini
         conversation = []
@@ -52,6 +54,7 @@ class UploadMessageView(APIView):
             # Convert to Gemini's role format (user/model)
             role = "user" if msg["role"] == "user" else "model"
             conversation.append({"role": role, "parts": [msg["content"]]})
+        pprint(conversation)
 
         def gemini_stream_generator():
             response = geminiClient.models.generate_content_stream(
@@ -85,6 +88,7 @@ class RegisterView(APIView):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+            Folder.objects.create(name="Untitled", owned_by=user)
 
             return Response(
                 {
