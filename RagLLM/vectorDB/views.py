@@ -6,6 +6,7 @@ from rest_framework import status, permissions
 
 from .serializers import DocumentSerializer
 from User.llm import VectorDocument
+from .models import Document
 
 
 # Create your views here.
@@ -35,3 +36,20 @@ class CreateDocumentView(APIView):
                 status=201,
             )
         return Response(serializer.errors, status=400)
+
+
+class GetDocumentsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        documents = Document.objects.filter(owned_by=request.user)
+        data = [
+            {
+                "id": doc.id,
+                "file_name": doc.file_name,
+                "file_size": doc.file_size,
+                "uploaded_at": doc.uploaded_at,
+            }
+            for doc in documents
+        ]
+        return Response(data, status=200)

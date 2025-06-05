@@ -18,6 +18,7 @@ from .serializers import (
     ChatListSerializer,
 )
 from .models import Folder, User, Chat
+from vectorDB.models import Document
 
 from RagLLM import geminiClient
 from google import genai
@@ -36,11 +37,20 @@ class UploadMessageView(APIView):
         except Chat.DoesNotExist:
             raise Http404
 
+    def getDocumentsContent(self, documentIds, user):
+        documents = Document.objects.filter(owned_by=user, id__in=documentIds)
+        return [doc.content for doc in documents if doc.content]
+
     def post(self, request, chatId):
         chat = self.get_chat(chatId)
         serializer = MessageSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
+        print(serializer.validated_data)
+
+        documentContents = self.getDocumentsContent(
+            serializer.validated_data["documents"], request.user
+        )
 
         new_message = {
             "role": serializer.validated_data["role"],
@@ -52,14 +62,38 @@ class UploadMessageView(APIView):
         messages.append(new_message)
         chat.messages = messages
         chat.save()
-        pprint(messages)
 
         # Build the entire conversation history to pass to gemini
         conversation = []
+        if len(serializer.validated_data["documents"]) > 0:
+            conversation.append(
+                {
+                    "role": "user",
+                    "parts": [
+                        {
+                            "text": (
+                                "[SYSTEM INSTRUCTION]\n"
+                                "You are a helpful assistant. Only use the content from the provided documents "
+                                "as context for your response. Do not use any external knowledge or assumptions."
+                            )
+                        }
+                    ],
+                }
+            )
+
+            # Add document context as messages
+            for i, doc_content in enumerate(documentContents):
+                conversation.append(
+                    {
+                        "role": "user",
+                        "parts": [{"text": f"[DOCUMENT {i+1} CONTEXT]\n{doc_content}"}],
+                    }
+                )
         for msg in messages:
             # Convert to Gemini's role format (user/model)
             role = "user" if msg["role"] == "user" else "model"
             conversation.append({"role": role, "parts": [{"text": msg["content"]}]})
+            pprint(conversation)
 
         def gemini_stream_generator():
             response = geminiClient.models.generate_content_stream(
