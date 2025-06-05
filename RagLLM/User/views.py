@@ -1,3 +1,5 @@
+import uuid
+from datetime import datetime
 from pprint import pprint
 import json
 from django.http import StreamingHttpResponse
@@ -43,11 +45,14 @@ class UploadMessageView(APIView):
         new_message = {
             "role": serializer.validated_data["role"],
             "content": serializer.validated_data["content"],
+            "id": str(uuid.uuid4()),
+            "created_at": datetime.now().isoformat(),
         }
         messages = chat.messages or []
         messages.append(new_message)
         chat.messages = messages
         chat.save()
+        pprint(messages)
 
         # Build the entire conversation history to pass to gemini
         conversation = []
@@ -55,7 +60,6 @@ class UploadMessageView(APIView):
             # Convert to Gemini's role format (user/model)
             role = "user" if msg["role"] == "user" else "model"
             conversation.append({"role": role, "parts": [{"text": msg["content"]}]})
-        pprint(conversation)
 
         def gemini_stream_generator():
             response = geminiClient.models.generate_content_stream(
@@ -71,7 +75,12 @@ class UploadMessageView(APIView):
                     full_response.append(chunk.text)
 
             # Save complete assistant response to chat
-            assistant_message = {"role": "model", "content": "".join(full_response)}
+            assistant_message = {
+                "role": "model",
+                "content": "".join(full_response),
+                "id": str(uuid.uuid4()),
+                "created_at": datetime.now().isoformat(),
+            }
             messages.append(assistant_message)
             chat.messages = messages
             chat.save()
