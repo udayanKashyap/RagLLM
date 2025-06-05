@@ -11,18 +11,20 @@ class DocumentSerializer(serializers.ModelSerializer):
     document = serializers.FileField(
         required=False,
         validators=[FileExtensionValidator(allowed_extensions=["pdf"])],
+        write_only=True,  # Only used for input, not returned in response
     )
     content = serializers.CharField(required=False)
+    file_name = serializers.CharField(read_only=True)
+    file_size = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Document
-        fields = ["id", "file", "content", "uploaded_at", "document"]
-        read_only_fields = ["file", "uploaded_at"]
+        fields = ["id", "file_name", "file_size", "content", "uploaded_at", "document"]
+        read_only_fields = ["file_name", "file_size", "uploaded_at"]
 
     def validate(self, data):
         has_pdf = "document" in data
-        has_text = "content" in data  # Check the source key
-
+        has_text = "content" in data
         if not has_pdf and not has_text:
             raise serializers.ValidationError(
                 "Document or extracted text must be provided."
@@ -35,12 +37,22 @@ class DocumentSerializer(serializers.ModelSerializer):
         if "document" in validated_data:
             # Handle PDF file upload
             document_file = validated_data.pop("document")
-            # Create the Document with the uploaded file
+
+            # Automatically extract file information
+            file_data = document_file.read()
+            file_name = document_file.name
+            file_size = len(file_data)
+
+            # Create the Document with automatically extracted file info
             return Document.objects.create(
-                file=document_file, owned_by=user, **validated_data
+                file_data=file_data,
+                file_name=file_name,
+                file_size=file_size,
+                owned_by=user,
+                **validated_data,
             )
         elif "content" in validated_data:
-            # Handle direct text input
+            # Handle direct text input (no file info needed)
             content = validated_data.pop("content")
             return Document.objects.create(
                 content=content, owned_by=user, **validated_data
